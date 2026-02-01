@@ -1,6 +1,6 @@
 package jp.asteria.player
 
-import cn.nukkit.OfflinePlayer
+import cn.nukkit.IPlayer
 import cn.nukkit.Player
 import cn.nukkit.event.EventHandler
 import cn.nukkit.event.EventPriority
@@ -19,7 +19,7 @@ class PlayersID : PluginBase(), Listener {
 
     override fun onEnable() {
         transaction {
-            val connection = Database.getConnection() ?:throw SQLException()
+            val connection = Database.getConnection() ?: throw SQLException()
             val stmt = connection.prepareStatement(
                 """
                     CREATE TABLE IF NOT EXISTS players (
@@ -66,7 +66,8 @@ class PlayersID : PluginBase(), Listener {
                 stmt2.executeUpdate()
             } else {
                 // 存在しない場合は新規作成
-                val stmt2 = connection.prepareStatement("INSERT INTO players (xuid, gamertag, created_at, updated_at) VALUES (?, ?, ?, ?)")
+                val stmt2 =
+                    connection.prepareStatement("INSERT INTO players (xuid, gamertag, created_at, updated_at) VALUES (?, ?, ?, ?)")
                 stmt2.setString(1, player.xuid)
                 stmt2.setString(2, player.name)
                 stmt2.setTimestamp(3, Timestamp(System.currentTimeMillis()))
@@ -88,17 +89,11 @@ class PlayersID : PluginBase(), Listener {
 /**
  * DBのプライマリーキー
  */
-val OfflinePlayer.primaryId: Int?
+val IPlayer.primaryId: Int?
     get() {
-        val id = server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_NAME, -1)
-        return if (id < 0) null else id
-    }
-
-/**
- * DBのプライマリーキー
- */
-val Player.primaryId: Int?
-    get() {
-        val id = namedTag.getInt(PlayersID.NBT_NAME, -1)
+        val id = when {
+            this is Player -> namedTag.getInt(PlayersID.NBT_NAME, -1)
+            else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_NAME, -1)
+        }
         return if (id < 0) null else id
     }
