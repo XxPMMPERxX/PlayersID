@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("jp.asteria:players-id:1.0.0")
+    compileOnly("jp.asteria:players-id:1.0.1")
 }
 ```
 
