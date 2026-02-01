@@ -1,0 +1,10 @@
+name: PlayersID
+version: 1.0.0
+main: jp.asteria.player.PlayersID
+description: プレイヤーのID管理
+author: deceitya
+website: https://github.com/XxPMMPERxX/PlayersID
+api: 2.0.0
+load: POSTWORLD
+depend:
+  - DBConnectorN
