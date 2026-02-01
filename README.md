@@ -49,7 +49,7 @@ depend:
 @EventHandler
 fun onJoin(event: PlayerJoinEvent) {
     val player = event.player
-    player.primaryId
+    player.primaryId // プロパティで拾えます
 
     val offlinePlayer = server.getOfflinePlayer("deceitya")
     offlinePlayer.primaryId
