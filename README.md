@@ -34,6 +34,16 @@ dependencies {
 }
 ```
 
+### plugin.yml
+dependを書いてください
+```
+name: SamplePlugin
+version: 1.0.0
+～～～～（略）～～～～
+depend:
+  - PlayersID
+```
+
 ### ソースコード
 ```kotlin
 @EventHandler
