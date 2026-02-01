@@ -50,5 +50,8 @@ depend:
 fun onJoin(event: PlayerJoinEvent) {
     val player = event.player
     player.primaryId
+
+    val offlinePlayer = server.getOfflinePlayer("deceitya")
+    offlinePlayer.primaryId
 }
 ```
