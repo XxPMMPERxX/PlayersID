@@ -1,6 +1,3 @@
 /.gradle/
 /.idea/
 /build/
-
-# Build config
-build.gradle.kts
