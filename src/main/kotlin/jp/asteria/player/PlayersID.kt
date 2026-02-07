@@ -8,9 +8,15 @@ import cn.nukkit.event.Listener
 import cn.nukkit.event.player.PlayerJoinEvent
 import cn.nukkit.plugin.PluginBase
 import jp.asteria.dbconnector.Database
-import jp.asteria.dbconnector.Database.transaction
-import java.sql.SQLException
-import java.sql.Timestamp
+import jp.asteria.player.infrastructure.PlayerEntity
+import jp.asteria.player.infrastructure.PlayersTable
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import kotlin.time.Clock
+import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 class PlayersID : PluginBase(), Listener {
     companion object {
@@ -19,22 +25,11 @@ class PlayersID : PluginBase(), Listener {
     }
 
     override fun onEnable() {
+        ExposedDatabase.connect(Database.getDataSource())
         transaction {
-            val connection = Database.getConnection() ?: throw SQLException()
-            val stmt = connection.prepareStatement(
-                """
-                    CREATE TABLE IF NOT EXISTS players (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        xuid VARCHAR(20) UNIQUE NOT NULL,
-                        discord_id VARCHAR(255) UNIQUE,
-                        gamertag VARCHAR(255) NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                """.trimIndent()
-            )
-            stmt.executeUpdate()
+            SchemaUtils.create(PlayersTable)
         }
+
         server.pluginManager.registerEvents(this, this)
     }
 
@@ -45,46 +40,21 @@ class PlayersID : PluginBase(), Listener {
 
     private fun loadPlayerData(player: Player) {
         transaction {
-            val connection = Database.getConnection() ?: throw SQLException()
-
-            // 存在確認
-            val stmt1 = connection.prepareStatement("SELECT EXISTS (SELECT 1 FROM players WHERE xuid = ?) AS flg")
-            var exists: Boolean
-            stmt1.use {
-                stmt1.setString(1, player.xuid)
-                val result = stmt1.executeQuery()
-                result.use {
-                    exists = if (result.next()) result.getBoolean("flg") else false
-                }
-            }
-
-            if (exists) {
-                // 存在する場合はゲーマータグの更新
-                val stmt2 = connection.prepareStatement("UPDATE players SET gamertag = ?, updated_at = ? WHERE id = ?")
-                stmt2.setString(1, player.name)
-                stmt2.setTimestamp(2, Timestamp(System.currentTimeMillis()))
-                stmt2.setInt(3, player.primaryId!!)
-                stmt2.executeUpdate()
+            var playerData = PlayerEntity.find { PlayersTable.xuid eq player.xuid }.firstOrNull()
+            // 存在する場合はゲーマータグ更新
+            // 存在しない場合は新規作成
+            if (playerData != null) {
+                playerData.gamerTag = player.name
+                playerData.updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             } else {
-                // 存在しない場合は新規作成
-                val stmt2 =
-                    connection.prepareStatement("INSERT INTO players (xuid, gamertag, created_at, updated_at) VALUES (?, ?, ?, ?)")
-                stmt2.setString(1, player.xuid)
-                stmt2.setString(2, player.name)
-                stmt2.setTimestamp(3, Timestamp(System.currentTimeMillis()))
-                stmt2.setTimestamp(4, Timestamp(System.currentTimeMillis()))
-                stmt2.executeUpdate()
-            }
-
-            val stmt3 = connection.prepareStatement("SELECT id, discord_id FROM players WHERE xuid = ?")
-            stmt3.use {
-                stmt3.setString(1, player.xuid)
-                val result3 = stmt3.executeQuery()
-                result3.use {
-                    player.namedTag.putInt(NBT_PRIMARY_KEY, result3.getInt("id"))
-                    player.namedTag.putString(NBT_DISCORD_ID, result3.getString("discord_id") ?: "")
+                playerData = PlayerEntity.new {
+                    xuid = player.xuid
+                    gamerTag = player.name
                 }
             }
+
+            player.namedTag.putInt(NBT_PRIMARY_KEY, playerData.id.value)
+            player.namedTag.putString(NBT_DISCORD_ID, playerData.discordId ?: "")
         }
     }
 }

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "jp.asteria"
-version = "1.1.0"
+version = "1.2.0"
 
 repositories {
     mavenCentral()
@@ -23,8 +23,13 @@ repositories {
 }
 
 dependencies {
+    compileOnly(kotlin("stdlib"))
     compileOnly("org.powernukkitx:server:2.0.0-SNAPSHOT")
-    compileOnly("jp.asteria:db-connector-n:1.0.0")
+    compileOnly("jp.asteria:db-connector-n:1.2.0")
+    compileOnly("org.jetbrains.exposed:exposed-core:1.0.0")
+    compileOnly("org.jetbrains.exposed:exposed-dao:1.0.0")
+    compileOnly("org.jetbrains.exposed:exposed-jdbc:1.0.0")
+    compileOnly("org.jetbrains.exposed:exposed-kotlin-datetime:1.0.0")
 }
 
 kotlin {
