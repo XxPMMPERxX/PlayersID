@@ -14,7 +14,8 @@ import java.sql.Timestamp
 
 class PlayersID : PluginBase(), Listener {
     companion object {
-        internal const val NBT_NAME = "jp.asteria.player.PlayersID"
+        internal const val NBT_PRIMARY_KEY = "jp.asteria.player.PlayersID.PrimaryKey"
+        internal const val NBT_DISCORD_ID = "jp.asteria.player.PlayersID.DiscordId"
     }
 
     override fun onEnable() {
@@ -39,10 +40,10 @@ class PlayersID : PluginBase(), Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     fun onLogin(event: PlayerJoinEvent) {
-        savePlayerData(event.player)
+        loadPlayerData(event.player)
     }
 
-    private fun savePlayerData(player: Player) {
+    private fun loadPlayerData(player: Player) {
         transaction {
             val connection = Database.getConnection() ?: throw SQLException()
 
@@ -73,13 +74,15 @@ class PlayersID : PluginBase(), Listener {
                 stmt2.setTimestamp(3, Timestamp(System.currentTimeMillis()))
                 stmt2.setTimestamp(4, Timestamp(System.currentTimeMillis()))
                 stmt2.executeUpdate()
+            }
 
-                // autoincrementのidをNBTにセット
-                val stmt3 = connection.prepareStatement("SELECT id FROM players WHERE xuid = ?")
+            val stmt3 = connection.prepareStatement("SELECT id, discord_id FROM players WHERE xuid = ?")
+            stmt3.use {
                 stmt3.setString(1, player.xuid)
-                val result2 = stmt3.executeQuery()
-                result2.use {
-                    player.namedTag.putInt(NBT_NAME, result2.getInt("id"))
+                val result3 = stmt3.executeQuery()
+                result3.use {
+                    player.namedTag.putInt(NBT_PRIMARY_KEY, result3.getInt("id"))
+                    player.namedTag.putString(NBT_DISCORD_ID, result3.getString("discord_id") ?: "")
                 }
             }
         }
@@ -92,8 +95,21 @@ class PlayersID : PluginBase(), Listener {
 val IPlayer.primaryId: Int?
     get() {
         val id = when {
-            this is Player -> namedTag.getInt(PlayersID.NBT_NAME, -1)
-            else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_NAME, -1)
+            this is Player -> namedTag.getInt(PlayersID.NBT_PRIMARY_KEY, -1)
+            else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_PRIMARY_KEY, -1)
         }
         return if (id < 0) null else id
+    }
+
+/**
+ * DiscordのID
+ * 何も設定してなかったら""を返す
+ */
+val IPlayer.discordId: String
+    get() {
+        val id = when {
+            this is Player -> namedTag.getString(PlayersID.NBT_DISCORD_ID, "")
+            else -> server.getOfflinePlayerData(uniqueId, false).getString(PlayersID.NBT_DISCORD_ID, "")
+        }
+        return id
     }
