@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("jp.asteria:players-id:1.0.0")
+    compileOnly("jp.asteria:players-id:1.0.1")
 }
 ```
 
@@ -49,6 +49,9 @@ depend:
 @EventHandler
 fun onJoin(event: PlayerJoinEvent) {
     val player = event.player
-    player.primaryId
+    player.primaryId // プロパティで拾えます
+
+    val offlinePlayer = server.getOfflinePlayer("deceitya")
+    offlinePlayer.primaryId
 }
 ```

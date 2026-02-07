@@ -1,6 +1,6 @@
 package jp.asteria.player
 
-import cn.nukkit.OfflinePlayer
+import cn.nukkit.IPlayer
 import cn.nukkit.Player
 import cn.nukkit.event.EventHandler
 import cn.nukkit.event.EventPriority
@@ -14,12 +14,13 @@ import java.sql.Timestamp
 
 class PlayersID : PluginBase(), Listener {
     companion object {
-        internal const val NBT_NAME = "jp.asteria.player.PlayersID"
+        internal const val NBT_PRIMARY_KEY = "jp.asteria.player.PlayersID.PrimaryKey"
+        internal const val NBT_DISCORD_ID = "jp.asteria.player.PlayersID.DiscordId"
     }
 
     override fun onEnable() {
         transaction {
-            val connection = Database.getConnection() ?:throw SQLException()
+            val connection = Database.getConnection() ?: throw SQLException()
             val stmt = connection.prepareStatement(
                 """
                     CREATE TABLE IF NOT EXISTS players (
@@ -39,10 +40,10 @@ class PlayersID : PluginBase(), Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     fun onLogin(event: PlayerJoinEvent) {
-        savePlayerData(event.player)
+        loadPlayerData(event.player)
     }
 
-    private fun savePlayerData(player: Player) {
+    private fun loadPlayerData(player: Player) {
         transaction {
             val connection = Database.getConnection() ?: throw SQLException()
 
@@ -66,19 +67,22 @@ class PlayersID : PluginBase(), Listener {
                 stmt2.executeUpdate()
             } else {
                 // 存在しない場合は新規作成
-                val stmt2 = connection.prepareStatement("INSERT INTO players (xuid, gamertag, created_at, updated_at) VALUES (?, ?, ?, ?)")
+                val stmt2 =
+                    connection.prepareStatement("INSERT INTO players (xuid, gamertag, created_at, updated_at) VALUES (?, ?, ?, ?)")
                 stmt2.setString(1, player.xuid)
                 stmt2.setString(2, player.name)
                 stmt2.setTimestamp(3, Timestamp(System.currentTimeMillis()))
                 stmt2.setTimestamp(4, Timestamp(System.currentTimeMillis()))
                 stmt2.executeUpdate()
+            }
 
-                // autoincrementのidをNBTにセット
-                val stmt3 = connection.prepareStatement("SELECT id FROM players WHERE xuid = ?")
+            val stmt3 = connection.prepareStatement("SELECT id, discord_id FROM players WHERE xuid = ?")
+            stmt3.use {
                 stmt3.setString(1, player.xuid)
-                val result2 = stmt3.executeQuery()
-                result2.use {
-                    player.namedTag.putInt(NBT_NAME, result2.getInt("id"))
+                val result3 = stmt3.executeQuery()
+                result3.use {
+                    player.namedTag.putInt(NBT_PRIMARY_KEY, result3.getInt("id"))
+                    player.namedTag.putString(NBT_DISCORD_ID, result3.getString("discord_id") ?: "")
                 }
             }
         }
@@ -88,17 +92,24 @@ class PlayersID : PluginBase(), Listener {
 /**
  * DBのプライマリーキー
  */
-val OfflinePlayer.primaryId: Int?
+val IPlayer.primaryId: Int?
     get() {
-        val id = server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_NAME, -1)
+        val id = when {
+            this is Player -> namedTag.getInt(PlayersID.NBT_PRIMARY_KEY, -1)
+            else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_PRIMARY_KEY, -1)
+        }
         return if (id < 0) null else id
     }
 
 /**
- * DBのプライマリーキー
+ * DiscordのID
+ * 何も設定してなかったら""を返す
  */
-val Player.primaryId: Int?
+val IPlayer.discordId: String
     get() {
-        val id = namedTag.getInt(PlayersID.NBT_NAME, -1)
-        return if (id < 0) null else id
+        val id = when {
+            this is Player -> namedTag.getString(PlayersID.NBT_DISCORD_ID, "")
+            else -> server.getOfflinePlayerData(uniqueId, false).getString(PlayersID.NBT_DISCORD_ID, "")
+        }
+        return id
     }
