@@ -26,10 +26,10 @@ dependencies {
     compileOnly(kotlin("stdlib"))
     compileOnly("org.powernukkitx:server:2.0.0-SNAPSHOT")
     compileOnly("jp.asteria:db-connector-n:1.2.0")
-    compileOnly("org.jetbrains.exposed:exposed-core:1.0.0")
-    compileOnly("org.jetbrains.exposed:exposed-dao:1.0.0")
-    compileOnly("org.jetbrains.exposed:exposed-jdbc:1.0.0")
-    compileOnly("org.jetbrains.exposed:exposed-kotlin-datetime:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-core:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-dao:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:1.0.0")
 }
 
 kotlin {
