@@ -1,12 +1,12 @@
 package jp.asteria.player
 
-import cn.nukkit.IPlayer
-import cn.nukkit.Player
-import cn.nukkit.event.EventHandler
-import cn.nukkit.event.EventPriority
-import cn.nukkit.event.Listener
-import cn.nukkit.event.player.PlayerJoinEvent
-import cn.nukkit.plugin.PluginBase
+import org.powernukkitx.IPlayer
+import org.powernukkitx.Player
+import org.powernukkitx.event.EventHandler
+import org.powernukkitx.event.EventPriority
+import org.powernukkitx.event.Listener
+import org.powernukkitx.event.player.PlayerJoinEvent
+import org.powernukkitx.plugin.PluginBase
 import jp.asteria.dbconnector.Database
 import jp.asteria.player.infrastructure.PlayerEntity
 import jp.asteria.player.infrastructure.PlayersTable
@@ -53,8 +53,8 @@ class PlayersID : PluginBase(), Listener {
                 }
             }
 
-            player.namedTag.putInt(NBT_PRIMARY_KEY, playerData.id.value)
-            player.namedTag.putString(NBT_DISCORD_ID, playerData.discordId ?: "")
+            player.nbt.putInt(NBT_PRIMARY_KEY, playerData.id.value)
+            player.nbt.putString(NBT_DISCORD_ID, playerData.discordId ?: "")
         }
     }
 }
@@ -65,7 +65,7 @@ class PlayersID : PluginBase(), Listener {
 val IPlayer.primaryId: Int?
     get() {
         val id = when {
-            this is Player -> namedTag.getInt(PlayersID.NBT_PRIMARY_KEY, -1)
+            this is Player -> nbt.getInt(PlayersID.NBT_PRIMARY_KEY, -1)
             else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_PRIMARY_KEY, -1)
         }
         return if (id < 0) null else id
@@ -78,7 +78,7 @@ val IPlayer.primaryId: Int?
 val IPlayer.discordId: String
     get() {
         val id = when {
-            this is Player -> namedTag.getString(PlayersID.NBT_DISCORD_ID, "")
+            this is Player -> nbt.getString(PlayersID.NBT_DISCORD_ID, "")
             else -> server.getOfflinePlayerData(uniqueId, false).getString(PlayersID.NBT_DISCORD_ID, "")
         }
         return id
