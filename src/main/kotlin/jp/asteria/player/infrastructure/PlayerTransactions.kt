@@ -16,6 +16,7 @@ object PlayerTransactions {
     private class Guard {
         val tables = mutableSetOf<String>()
         var rejected = false
+        var failed = false
     }
     private val guardKey = Key<Guard>()
     private val writeTypes = setOf(StatementType.INSERT, StatementType.UPDATE, StatementType.DELETE)
@@ -48,6 +49,9 @@ object PlayerTransactions {
                 check(scope.getUserData(guardKey)?.rejected != true) {
                     "Rejected ORM writes require the whole player transaction to roll back"
                 }
+                check(scope.getUserData(guardKey)?.failed != true) {
+                    "A failed player write requires the whole transaction to roll back"
+                }
                 scope = scope.outerTransaction?.takeIf { it.db === db } ?: return
             }
         }
@@ -75,26 +79,37 @@ object PlayerTransactions {
         check(Database.getTransactionConnection() == null) { "Player writes cannot join Database.transaction" }
         return transaction {
             protect(this, protectedTables)
-            val connection = connection.connection as Connection
-            check(!connection.autoCommit) { "Player writes require an active JDBC transaction" }
-            val suffix = when (connection.metaData.databaseProductName) {
-                "MySQL", "MariaDB" -> " FOR UPDATE"
-                "SQLite" -> ""
-                else -> error("Unsupported player database: ${connection.metaData.databaseProductName}")
-            }
-            for (id in playerIds.distinct().sorted()) {
-                // DSLのロックSQLは実行前にORMの全pending書込みをflushするため使わない。
-                connection.prepareStatement("UPDATE players SET id=id WHERE id=?").use {
-                    it.setInt(1, id)
-                    it.executeUpdate()
+            try {
+                val connection = connection.connection as Connection
+                check(!connection.autoCommit) { "Player writes require an active JDBC transaction" }
+                val suffix = when (connection.metaData.databaseProductName) {
+                    "MySQL", "MariaDB" -> " FOR UPDATE"
+                    "SQLite" -> ""
+                    else -> error("Unsupported player database: ${connection.metaData.databaseProductName}")
                 }
-                // MySQLでは変更件数0でも行が存在し得る。RRの古いsnapshotも使わない。
-                connection.prepareStatement("SELECT id FROM players WHERE id=?$suffix").use {
-                    it.setInt(1, id)
-                    it.executeQuery().use { rows -> require(rows.next()) { "Unknown player: $id" } }
+                for (id in playerIds.distinct().sorted()) {
+                    // DSLのロックSQLは実行前にORMの全pending書込みをflushするため使わない。
+                    connection.prepareStatement("UPDATE players SET id=id WHERE id=?").use {
+                        it.setInt(1, id)
+                        it.executeUpdate()
+                    }
+                    // MySQLでは変更件数0でも行が存在し得る。RRの古いsnapshotも使わない。
+                    connection.prepareStatement("SELECT id FROM players WHERE id=?$suffix").use {
+                        it.setInt(1, id)
+                        it.executeQuery().use { rows -> require(rows.next()) { "Unknown player: $id" } }
+                    }
                 }
+                action()
+            } catch (failure: Throwable) {
+                var scope: JdbcTransaction? = this
+                while (scope != null && scope.db === db) {
+                    val current = scope
+                    val guard = current.getUserData(guardKey) ?: Guard().also { current.putUserData(guardKey, it) }
+                    guard.failed = true
+                    scope = scope.outerTransaction
+                }
+                throw failure
             }
-            action()
         }
     }
 
