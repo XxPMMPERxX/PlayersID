@@ -8,14 +8,9 @@ import org.powernukkitx.event.Listener
 import org.powernukkitx.event.player.PlayerJoinEvent
 import org.powernukkitx.plugin.PluginBase
 import jp.asteria.dbconnector.Database
-import jp.asteria.player.infrastructure.PlayerEntity
 import jp.asteria.player.infrastructure.PlayersTable
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import kotlin.time.Clock
 import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 class PlayersID : PluginBase(), Listener {
@@ -25,12 +20,21 @@ class PlayersID : PluginBase(), Listener {
     }
 
     override fun onEnable() {
-        ExposedDatabase.connect(Database.getDataSource())
-        transaction {
-            SchemaUtils.create(PlayersTable)
+        jp.asteria.player.infrastructure.PlayerTransactions.initialize()
+        try {
+            ExposedDatabase.connect(Database.getDataSource())
+            transaction {
+                SchemaUtils.create(PlayersTable)
+            }
+            server.pluginManager.registerEvents(this, this)
+        } catch (failure: Throwable) {
+            jp.asteria.player.infrastructure.PlayerTransactions.stop()
+            throw failure
         }
+    }
 
-        server.pluginManager.registerEvents(this, this)
+    override fun onDisable() {
+        jp.asteria.player.infrastructure.PlayerTransactions.stop()
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -39,24 +43,15 @@ class PlayersID : PluginBase(), Listener {
     }
 
     private fun loadPlayerData(player: Player) {
-        transaction {
-            var playerData = PlayerEntity.find { PlayersTable.xuid eq player.xuid }.firstOrNull()
-            // 存在する場合はゲーマータグ更新
-            // 存在しない場合は新規作成
-            if (playerData != null) {
-                playerData.gamerTag = player.name
-                playerData.updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            } else {
-                playerData = PlayerEntity.new {
-                    xuid = player.xuid
-                    gamerTag = player.name
-                }
-            }
-
-            player.nbt.putInt(NBT_PRIMARY_KEY, playerData.id.value)
-            player.nbt.putString(NBT_DISCORD_ID, playerData.discordId ?: "")
+        check(server.isPrimaryThread) { "Player login must run on the server primary thread" }
+        check(org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.currentOrNull() == null) {
+            "Player login must run outside Exposed transactions"
         }
+        val identity = jp.asteria.player.infrastructure.PlayerIdentityStore.load(player.xuid, player.name)
+        player.nbt.putInt(NBT_PRIMARY_KEY, identity.playerId)
+        player.nbt.putString(NBT_DISCORD_ID, identity.discordId ?: "")
     }
+
 }
 
 /**
