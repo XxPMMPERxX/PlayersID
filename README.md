@@ -4,10 +4,10 @@
 
 ## 依存・導入
 
-Java 21、DBConnectorN 1.2.2以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
+Java 21、DBConnectorN 1.4.0以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
 
 ```kotlin
-compileOnly("jp.asteria:players-id:1.3.1")
+compileOnly("jp.asteria:players-id:1.3.2")
 ```
 
 `./gradlew shadowJar`で生成した`build/libs/`の`-all.jar`を配置し、依存プラグインと一緒に再起動する。
