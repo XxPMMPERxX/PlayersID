@@ -7,7 +7,7 @@
 Java 21、DBConnectorN 1.6.0以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
 
 ```kotlin
-compileOnly("jp.asteria:players-id:1.5.0")
+compileOnly("jp.asteria:players-id:1.6.0")
 ```
 
 `./gradlew shadowJar`で生成した`build/libs/`の`-all.jar`を配置し、依存プラグインと一緒に再起動する。
@@ -15,6 +15,8 @@ compileOnly("jp.asteria:players-id:1.5.0")
 ## IDの取得
 
 `jp.asteria.player.primaryId`をimportすると、`IPlayer.primaryId`で整数ID（未設定時はnull）を取得できる。`discordId`は未設定なら空文字を返す。ログイン処理はサーバー主スレッドかつDBトランザクションの外で行う。
+
+native初期化前のPlayerや保存済みNBTのないオフラインPlayerも未設定として返す。読取でNBTやID行を新規作成しない。
 
 ## プレイヤーデータの保存境界
 

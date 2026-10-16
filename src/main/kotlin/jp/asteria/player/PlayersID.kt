@@ -61,8 +61,8 @@ class PlayersID : PluginBase(), Listener {
 val IPlayer.primaryId: Int?
     get() {
         val id = when {
-            this is Player -> nbt.getInt(PlayersID.NBT_PRIMARY_KEY, -1)
-            else -> server.getOfflinePlayerData(uniqueId, false).getInt(PlayersID.NBT_PRIMARY_KEY, -1)
+            this is Player -> nbt?.getInt(PlayersID.NBT_PRIMARY_KEY, -1) ?: -1
+            else -> server.getOfflinePlayerData(uniqueId, false)?.getInt(PlayersID.NBT_PRIMARY_KEY, -1) ?: -1
         }
         return if (id < 0) null else id
     }
@@ -74,8 +74,8 @@ val IPlayer.primaryId: Int?
 val IPlayer.discordId: String
     get() {
         val id = when {
-            this is Player -> nbt.getString(PlayersID.NBT_DISCORD_ID, "")
-            else -> server.getOfflinePlayerData(uniqueId, false).getString(PlayersID.NBT_DISCORD_ID, "")
+            this is Player -> nbt?.getString(PlayersID.NBT_DISCORD_ID, "") ?: ""
+            else -> server.getOfflinePlayerData(uniqueId, false)?.getString(PlayersID.NBT_DISCORD_ID, "") ?: ""
         }
         return id
     }
