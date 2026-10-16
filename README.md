@@ -4,10 +4,10 @@
 
 ## 依存・導入
 
-Java 21、DBConnectorN 1.4.0以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
+Java 21、DBConnectorN 1.6.0以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
 
 ```kotlin
-compileOnly("jp.asteria:players-id:1.3.2")
+compileOnly("jp.asteria:players-id:1.4.0")
 ```
 
 `./gradlew shadowJar`で生成した`build/libs/`の`-all.jar`を配置し、依存プラグインと一緒に再起動する。
@@ -33,3 +33,7 @@ compileOnly("jp.asteria:players-id:1.3.2")
 ## 保存テーブル
 
 `players`の`id`が整数の主キー。`xuid`とnullableな`discord_id`は一意。`gamertag`、`created_at`、`updated_at`も保存する。既存のテーブル名・列・データを保持し、ロック専用のテーブルを追加しない。
+
+## 新規IDの作成記録
+
+新しく作るIDは、`player_identity_creations_v1`とDBConnectorNの操作結果をIDのINSERTと同じSQLトランザクションで保存する。`PlayerCreations.findInCurrentTransaction(playerId)`で、作成元・要求hash・確定結果を照合した不変値を取得できる。外側のExposed保存境界から呼ぶ。既存IDには記録を補完しない。nullは新規扱いや移行許可を意味せず、各機能の初期化・移行の判断には別途検証が必要。破損記録は例外として保留する。

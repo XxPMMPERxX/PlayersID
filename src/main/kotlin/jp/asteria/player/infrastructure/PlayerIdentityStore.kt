@@ -27,6 +27,7 @@ internal object PlayerIdentityStore {
             }
             val playerId = existingId ?: PlayerEntity.new { this.xuid = xuid; this.gamerTag = gamerTag }.id.value
             PlayerTransactions.write(playerId) {
+                if (existingId == null) PlayerCreations.recordInsertedIdentity(playerId, xuid)
                 val row = PlayersTable.selectAll().where { PlayersTable.id eq playerId }.forUpdate().single()
                 val player = PlayerEntity.wrapRow(row)
                 if (existingId != null) {

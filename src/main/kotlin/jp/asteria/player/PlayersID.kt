@@ -26,6 +26,7 @@ class PlayersID : PluginBase(), Listener {
             transaction {
                 SchemaUtils.create(PlayersTable)
             }
+            jp.asteria.player.infrastructure.PlayerCreations.initializeSchema()
             server.pluginManager.registerEvents(this, this)
         } catch (failure: Throwable) {
             jp.asteria.player.infrastructure.PlayerTransactions.stop()

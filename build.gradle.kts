@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "jp.asteria"
-version = "1.3.2"
+version = "1.4.0"
 
 repositories {
     mavenCentral()
@@ -23,9 +23,10 @@ repositories {
 }
 
 dependencies {
+    testImplementation(kotlin("test-junit"))
     compileOnly(kotlin("stdlib"))
     compileOnly("org.powernukkitx:server:2.0.0-SNAPSHOT")
-    compileOnly("jp.asteria:db-connector-n:1.4.0")
+    compileOnly("jp.asteria:db-connector-n:1.6.0")
     compileOnly("org.jetbrains.exposed:exposed-core:1.0.0")
     compileOnly("org.jetbrains.exposed:exposed-dao:1.0.0")
     compileOnly("org.jetbrains.exposed:exposed-jdbc:1.0.0")
@@ -54,3 +55,6 @@ publishing {
         }
     }
 }
+
+configurations.testCompileClasspath { extendsFrom(configurations.compileOnly.get()) }
+configurations.testRuntimeClasspath { extendsFrom(configurations.compileOnly.get()) }
