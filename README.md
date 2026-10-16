@@ -7,7 +7,7 @@
 Java 21、DBConnectorN 1.6.0以降、Exposed 1.0.0を使用する。`plugin.yml`の`depend`へPlayersIDを指定する。
 
 ```kotlin
-compileOnly("jp.asteria:players-id:1.4.0")
+compileOnly("jp.asteria:players-id:1.5.0")
 ```
 
 `./gradlew shadowJar`で生成した`build/libs/`の`-all.jar`を配置し、依存プラグインと一緒に再起動する。
@@ -37,3 +37,9 @@ compileOnly("jp.asteria:players-id:1.4.0")
 ## 新規IDの作成記録
 
 新しく作るIDは、`player_identity_creations_v1`とDBConnectorNの操作結果をIDのINSERTと同じSQLトランザクションで保存する。`PlayerCreations.findInCurrentTransaction(playerId)`で、作成元・要求hash・確定結果を照合した不変値を取得できる。外側のExposed保存境界から呼ぶ。既存IDには記録を補完しない。nullは新規扱いや移行許可を意味せず、各機能の初期化・移行の判断には別途検証が必要。破損記録は例外として保留する。
+
+## 対象を固定する保存境界
+
+複数管理元が保存する新しい処理は、`PlayerTransactions.writeClosed(allPlayerIds) { context -> ... }`から開始する。外側のExposedトランザクションの外で呼び、対象IDを最初に昇順でロックする。各参加者は`context.enlist(playerId, protectedTables) { ... }`で同じ接続へ保存する。結果は最外commit後に返る。操作の冪等・結果固定は、この中のSqlOperationLedgerで行う。
+
+contextは対象一覧を変更できず、別スレッド・別接続・終了後には使えない。従来の`write`を内側で使う場合も対象集合外のIDを追加できない。不正な参加を捕捉して続行しても全体を取り消す。contextやSQLブロック内でnative実体・表示・外部通信を操作しない。共有の非プレイヤー集約ロックを宣言するAPIではない。

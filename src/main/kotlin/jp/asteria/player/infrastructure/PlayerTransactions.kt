@@ -9,6 +9,7 @@ import java.sql.Connection
 object PlayerTransactions {
     @Volatile
     private var acceptingWrites = false
+    private val currentClosed = ThreadLocal<PlayerWriteContext>()
 
     @Synchronized
     internal fun initialize() {
@@ -28,6 +29,7 @@ object PlayerTransactions {
         require(playerIds.isNotEmpty() && playerIds.all { it >= 0 })
         check(acceptingWrites) { "Player transaction service is not active" }
         return SqlStoreTransactions.write(protectedTables) {
+            currentClosed.get()?.validateParticipants(playerIds)
             val connection = TransactionManager.current().connection.connection as Connection
             check(!connection.autoCommit) { "Player writes require an active JDBC transaction" }
             val lockingReadSuffix = lockingReadSuffix(connection)
@@ -35,6 +37,23 @@ object PlayerTransactions {
                 lockPlayer(connection, playerId, lockingReadSuffix)
             }
             action()
+        }
+    }
+
+    /** 外側の保存境界を所有し、全参加者が同じ不変のロック集合へ入る。 */
+    fun <T> writeClosed(playerIds: Collection<Int>, action: (PlayerWriteContext) -> T): T {
+        currentClosed.get()?.rejectNestedRoot()
+        check(TransactionManager.currentOrNull() == null && currentClosed.get() == null) {
+            "Closed player writes must start outside SQL transactions"
+        }
+        val ids = playerIds.distinct().sorted()
+        return write(ids) {
+            val connection = TransactionManager.current().connection.connection as Connection
+            val context = PlayerWriteContext.create(ids, connection)
+            SqlStoreTransactions.checkBeforeCommit { context.validateCommit() }
+            currentClosed.set(context)
+            try { action(context) }
+            finally { context.close(); currentClosed.remove() }
         }
     }
 
