@@ -8,8 +8,6 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.sql.Connection
 import kotlin.time.Clock
 
-internal data class PlayerIdentity(val playerId: Int, val discordId: String?)
-
 /** ID確定・名前更新を保存してから、接続側へ不変値だけを返す。 */
 internal object PlayerIdentityStore {
     fun load(xuid: String, gamerTag: String): PlayerIdentity {
